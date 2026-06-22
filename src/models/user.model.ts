@@ -4,9 +4,9 @@ export interface IUser extends Document {
     username: string;
     email: string;
     password: string;
-    isVerified: boolean;
     otp?: string;
     otpExpiry?: Date;
+    isVerified: boolean;
 }
 
 const userSchema = new Schema<IUser>(
@@ -29,17 +29,16 @@ const userSchema = new Schema<IUser>(
             required: [true, "Password is required"],
             minlength: [6, "Password must be at least 6 characters"],
         },
-        isVerified: {
-            type: Boolean,
-            default: false,
-        },
         otp: {
             type: String,
         },
         otpExpiry: {
             type: Date,
         },
-
+        isVerified: {
+            type: Boolean,
+            default: false,
+        },
     },
     {
         timestamps: true,
