@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { signinUser, signupUser, verifyOtp } from "../services/auth.service";
+import { resendOtp, signinUser, signupUser, verifyOtp } from "../services/auth.service";
 
 const signupController = async (req: Request, res: Response) => {
     try {
@@ -108,5 +108,31 @@ const verifyOtpController = async (req: Request, res: Response) => {
     }
 }
 
+const resendOtpController = async (req: Request, res: Response) => {
+    try {
+        const { email } = req.body;
+        if (!email) {
+            return res.status(400).json({
+                success: false,
+                message: "Email is required"
+            })
+        }
 
-export { signupController, signinController, verifyOtpController };
+        await resendOtp({ email });
+        return res.status(200).json({
+            success: true,
+            message: "OTP sent successfully"
+        })
+
+    } catch (error) {
+        return res.status(400).json({
+            success: false,
+            message: error instanceof Error
+                ? error.message
+                : "Internal server error"
+        })
+    }
+}
+
+
+export { signupController, signinController, verifyOtpController, resendOtpController };

@@ -15,7 +15,7 @@ interface SigninUserInput {
 }
 interface verifyUserInput {
     email: string;
-    otp: string;
+    otp?: string;
 }
 
 const signupUser = async ({ username, email, password }: SignupUserInput) => {
@@ -46,7 +46,6 @@ const signupUser = async ({ username, email, password }: SignupUserInput) => {
         email: user.email,
         isVerified: user.isVerified
     };
-
 }
 
 const signinUser = async ({ email, password }: SigninUserInput) => {
@@ -114,4 +113,26 @@ const verifyOtp = async ({ email, otp }: verifyUserInput) => {
 
 }
 
-export { signupUser, signinUser, verifyOtp };
+const resendOtp = async ({ email }: verifyUserInput) => {
+    const user = await User.findOne({ email });
+
+    if (!user) {
+        throw new Error("User not found")
+    }
+
+    if (user.isVerified) {
+        throw new Error("User already verified")
+    }
+
+    const newOtp = generateOtp();
+
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
+
+    user.otp = newOtp;
+    user.otpExpiry = otpExpiry;
+    await user.save();
+
+    return true;
+}
+
+export { signupUser, signinUser, verifyOtp, resendOtp };
