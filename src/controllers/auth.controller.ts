@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { signinUser, signupUser } from "../services/auth.service";
+import { signinUser, signupUser, verifyOtp } from "../services/auth.service";
 
 const signupController = async (req: Request, res: Response) => {
     try {
@@ -56,6 +56,17 @@ const signinController = async (req: Request, res: Response) => {
             });
         }
 
+        if (
+            error instanceof Error &&
+            error.message === "Please verify your email first"
+        ) {
+            return res.status(403).json({
+                success: false,
+                message: error.message,
+                isVerified: false
+            });
+        }
+
         return res.status(500).json({
             success: false,
             message: error instanceof Error
@@ -65,4 +76,37 @@ const signinController = async (req: Request, res: Response) => {
     }
 }
 
-export { signupController, signinController };
+const verifyOtpController = async (req: Request, res: Response) => {
+    try {
+        const { email, otp } = req.body
+        if (!email || !otp) {
+            return res.status(400).json({
+                success: false,
+                message: "Email and OTP are required"
+            })
+        }
+
+        const user = await verifyOtp({ email, otp });
+        return res.status(200).json({
+            success: true,
+            message: "User verified successfully",
+            data: {
+                id: user.id,
+                username: user.username,
+                email: user.email,
+                isVerified: user.isVerified
+            }
+
+        })
+    } catch (error) {
+        return res.status(400).json({
+            success: false,
+            message: error instanceof Error
+                ? error.message
+                : "Internal server error"
+        })
+    }
+}
+
+
+export { signupController, signinController, verifyOtpController };
