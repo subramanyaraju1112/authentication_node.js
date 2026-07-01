@@ -3,6 +3,7 @@ import comparePassword from "../utils/comparePassword";
 import generateOtp from "../utils/generateOtp";
 import generateToken from "../utils/generateToken";
 import hashPassword from "../utils/hashPassword";
+import { sendOtpEmail } from "./email.service";
 
 interface SignupUserInput {
     username: string;
@@ -39,6 +40,8 @@ const signupUser = async ({ username, email, password }: SignupUserInput) => {
         otpExpiry,
         isVerified: false,
     })
+
+    await sendOtpEmail({ email, otp });
 
     return {
         id: user._id,
