@@ -135,6 +135,8 @@ const resendOtp = async ({ email }: verifyUserInput) => {
     user.otpExpiry = otpExpiry;
     await user.save();
 
+    await sendOtpEmail({ email, otp: newOtp });
+
     return true;
 }
 

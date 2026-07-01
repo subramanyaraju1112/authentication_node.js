@@ -37,11 +37,11 @@ const sendOtpEmail = async ({ email, otp }: SendOtpEmailInput) => {
     try {
         const info = await sendEmail({
             to: email, subject: "Verify Your Account", html: `
-            <h2>Email Verification</h2>
+<h2>Email Verification</h2>
 <p>Thanks for signing up!</p>
 <p>Your verification code is:</p>
 <h1>${otp}</h1>
-<p>This OTP is valid for 10 minutes.</p>
+<p><strong>This OTP is valid for 10 minutes.</strong></p>
 `})
         return info;
     } catch (error) {
