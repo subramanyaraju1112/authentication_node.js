@@ -19,6 +19,17 @@ interface verifyUserInput {
     otp?: string;
 }
 
+interface forgotPasswordInput {
+    email: string;
+}
+
+interface resetPasswordInput {
+    email: string;
+    otp: string;
+    password: string;
+    confirmPassword: string;
+}
+
 const signupUser = async ({ username, email, password }: SignupUserInput) => {
     const existingUser = await User.findOne({ email });
 
@@ -140,8 +151,66 @@ const resendOtp = async ({ email }: verifyUserInput) => {
     return true;
 }
 
+const forgotPassword = async ({ email }: forgotPasswordInput) => {
+    const user = await User.findOne({ email });
+
+    if (!user) {
+        throw new Error("User not found")
+    }
+
+    const otp = generateOtp();
+
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
+
+    user.otp = otp;
+    user.otpExpiry = otpExpiry;
+
+    await user.save();
+
+    await sendOtpEmail({ email, otp });
+
+    return true;
+}
+
+const resetPassword = async ({ email, otp, password, confirmPassword }: resetPasswordInput) => {
+
+    const user = await User.findOne({ email });
+    if (!user) {
+        throw new Error("User not found")
+    }
+
+    if (user.otp !== otp) {
+        throw new Error("Incorrect OTP")
+    }
+
+    if (!user.otpExpiry) {
+        throw new Error("OTP expiry not found");
+    }
+
+    if (Date.now() > user.otpExpiry.getTime()) {
+        throw new Error("OTP expired")
+    }
+
+    if (password !== confirmPassword) {
+        throw new Error("Password doesn't match")
+    }
+
+    const hashedPassword = await hashPassword(password);
+
+    user.password = hashedPassword;
+    user.otp = undefined;
+    user.otpExpiry = undefined;
+
+    await user.save()
+
+    return {
+        message: "Password reset successfull"
+    };
+
+}
+
 const logout = async () => {
     return true;
 }
 
-export { signupUser, signinUser, verifyOtp, resendOtp, logout };
+export { signupUser, signinUser, verifyOtp, resendOtp, forgotPassword, resetPassword, logout };

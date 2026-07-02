@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { logout, resendOtp, signinUser, signupUser, verifyOtp } from "../services/auth.service";
+import { forgotPassword, logout, resendOtp, resetPassword, signinUser, signupUser, verifyOtp } from "../services/auth.service";
 
 const signupController = async (req: Request, res: Response) => {
     try {
@@ -134,6 +134,57 @@ const resendOtpController = async (req: Request, res: Response) => {
     }
 }
 
+const forgotPasswordController = async (req: Request, res: Response) => {
+    try {
+        const { email } = req.body;
+        if (!email) {
+            return res.status(400).json({
+                success: false,
+                message: "Email is required"
+            })
+        }
+
+        await forgotPassword({ email });
+        return res.status(200).json({
+            success: true,
+            message: "Password reset OTP sent successfully"
+        })
+
+    } catch (error) {
+        return res.status(400).json({
+            success: false,
+            message: error instanceof Error
+                ? error.message
+                : "Internal server error"
+        })
+    }
+}
+
+const resetPasswordController = async (req: Request, res: Response) => {
+    try {
+        const { email, otp, password, confirmPassword } = req.body;
+
+        if (!email || !otp || !password || !confirmPassword) {
+            return res.status(400).json({
+                success: false,
+                message: "All fields are required"
+            })
+        }
+        await resetPassword({ email, otp, password, confirmPassword });
+        return res.status(200).json({
+            success: true,
+            message: "Password changed successfully"
+        })
+    } catch (error) {
+        return res.status(400).json({
+            success: false,
+            message: error instanceof Error
+                ? error.message
+                : "Internal server error"
+        })
+    }
+}
+
 const logoutController = async (req: Request, res: Response) => {
     try {
         await logout();
@@ -152,4 +203,4 @@ const logoutController = async (req: Request, res: Response) => {
 }
 
 
-export { signupController, signinController, verifyOtpController, resendOtpController, logoutController };
+export { signupController, signinController, verifyOtpController, resendOtpController, forgotPasswordController, resetPasswordController, logoutController };
