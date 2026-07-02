@@ -140,4 +140,8 @@ const resendOtp = async ({ email }: verifyUserInput) => {
     return true;
 }
 
-export { signupUser, signinUser, verifyOtp, resendOtp };
+const logout = async () => {
+    return true;
+}
+
+export { signupUser, signinUser, verifyOtp, resendOtp, logout };

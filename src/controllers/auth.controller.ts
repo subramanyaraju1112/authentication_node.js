@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { resendOtp, signinUser, signupUser, verifyOtp } from "../services/auth.service";
+import { logout, resendOtp, signinUser, signupUser, verifyOtp } from "../services/auth.service";
 
 const signupController = async (req: Request, res: Response) => {
     try {
@@ -134,5 +134,22 @@ const resendOtpController = async (req: Request, res: Response) => {
     }
 }
 
+const logoutController = async (req: Request, res: Response) => {
+    try {
+        await logout();
+        return res.status(200).json({
+            success: true,
+            message: "User logged out successfully"
+        })
+    } catch (error) {
+        return res.status(400).json({
+            success: false,
+            message: error instanceof Error
+                ? error.message
+                : "Internal server error"
+        })
+    }
+}
 
-export { signupController, signinController, verifyOtpController, resendOtpController };
+
+export { signupController, signinController, verifyOtpController, resendOtpController, logoutController };
