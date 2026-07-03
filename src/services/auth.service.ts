@@ -1,9 +1,10 @@
 import User from "../models/user.model";
 import comparePassword from "../utils/comparePassword";
 import generateOtp from "../utils/generateOtp";
-import generateToken from "../utils/generateToken";
 import hashPassword from "../utils/hashPassword";
 import { sendOtpEmail } from "./email.service";
+import generateRefreshToken from "../utils/generateRefreshToken";
+import generateAccessToken from "../utils/generateAccessToken";
 
 interface SignupUserInput {
     username: string;
@@ -79,14 +80,16 @@ const signinUser = async ({ email, password }: SigninUserInput) => {
         throw new Error("Please verify your email first")
     }
 
-    const token = generateToken(user._id.toString(), user.email)
+    const accessToken = generateAccessToken(user._id.toString());
+    const refreshToken = generateRefreshToken(user._id.toString())
 
     return {
         id: user._id.toString(),
         username: user.username,
         email: user.email,
         isVerified: user.isVerified,
-        token
+        accessToken,
+        refreshToken
     }
 }
 
