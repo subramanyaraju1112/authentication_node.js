@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { forgotPassword, logout, resendOtp, resetPassword, signinUser, signupUser, verifyOtp } from "../services/auth.service";
+import { forgotPassword, logout, refreshToken, resendOtp, resetPassword, signinUser, signupUser, verifyOtp } from "../services/auth.service";
 
 const signupController = async (req: Request, res: Response) => {
     try {
@@ -185,6 +185,33 @@ const resetPasswordController = async (req: Request, res: Response) => {
     }
 }
 
+const refreshTokenController = async (req: Request, res: Response) => {
+    try {
+        const { refreshToken } = req.body;
+        if (!refreshToken) {
+            return res.status(400).json({
+                success: false,
+                message: "Token not found"
+            })
+        }
+
+        const tokens = await refreshToken({ refreshToken });
+        return res.status(200).json({
+            success: true,
+            message: "Refresh Token generated sucessfully",
+            data: tokens
+        })
+        
+    } catch (error) {
+        return res.status(400).json({
+            success: false,
+            message: error instanceof Error
+                ? error.message
+                : "Internal server error"
+        })
+    }
+}
+
 const logoutController = async (req: Request, res: Response) => {
     try {
         await logout();
@@ -203,4 +230,4 @@ const logoutController = async (req: Request, res: Response) => {
 }
 
 
-export { signupController, signinController, verifyOtpController, resendOtpController, forgotPasswordController, resetPasswordController, logoutController };
+export { signupController, signinController, verifyOtpController, resendOtpController, forgotPasswordController, resetPasswordController, refreshTokenController, logoutController };

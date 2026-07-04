@@ -9,6 +9,7 @@ router.post("/signup", signupController);
 router.post("/signin", signinController);
 router.post("/verify-otp", verifyOtpController);
 router.post("/resend-otp", resendOtpController);
+// router.post("/refresh-token", refreshTokenController);
 
 // protected routes
 router.post("/logout", authenticate, logoutController);
