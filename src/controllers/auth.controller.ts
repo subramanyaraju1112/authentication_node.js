@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { forgotPassword, logout, refreshToken, resendOtp, resetPassword, signinUser, signupUser, verifyOtp } from "../services/auth.service";
+import { forgotPassword, logout, refreshAccessToken, resendOtp, resetPassword, signinUser, signupUser, verifyOtp } from "../services/auth.service";
 
 const signupController = async (req: Request, res: Response) => {
     try {
@@ -187,21 +187,21 @@ const resetPasswordController = async (req: Request, res: Response) => {
 
 const refreshTokenController = async (req: Request, res: Response) => {
     try {
-        const { refreshToken } = req.body;
-        if (!refreshToken) {
+        const { token } = req.body;
+        if (!token) {
             return res.status(400).json({
                 success: false,
                 message: "Token not found"
             })
         }
 
-        const tokens = await refreshToken({ refreshToken });
+        const tokens = await refreshAccessToken({ token });
         return res.status(200).json({
             success: true,
             message: "Refresh Token generated sucessfully",
             data: tokens
         })
-        
+
     } catch (error) {
         return res.status(400).json({
             success: false,
@@ -214,7 +214,14 @@ const refreshTokenController = async (req: Request, res: Response) => {
 
 const logoutController = async (req: Request, res: Response) => {
     try {
-        await logout();
+        const { token } = req.body;
+        if (!token) {
+            return res.status(400).json({
+                success: false,
+                message: "Token not found"
+            })
+        }
+        await logout({ token });
         return res.status(200).json({
             success: true,
             message: "User logged out successfully"

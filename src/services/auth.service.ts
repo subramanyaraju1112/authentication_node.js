@@ -230,7 +230,7 @@ const resetPassword = async ({ email, otp, password, confirmPassword }: resetPas
     };
 }
 
-const refreshToken = async ({ token }: refreshTokenInput) => {
+const refreshAccessToken = async ({ token }: refreshTokenInput) => {
     const secret = process.env.JWT_REFRESH_SECRET;
 
     if (!secret) {
@@ -278,4 +278,4 @@ const logout = async ({ token }: refreshTokenInput) => {
     return true;
 }
 
-export { signupUser, signinUser, verifyOtp, resendOtp, forgotPassword, resetPassword, refreshToken, logout };
+export { signupUser, signinUser, verifyOtp, resendOtp, forgotPassword, resetPassword, refreshAccessToken, logout };
