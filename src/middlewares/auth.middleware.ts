@@ -25,8 +25,9 @@ const authenticate = (req: Request, res: Response, next: NextFunction) => {
         }
 
         const token = authHeader.split(" ")[1];
+        const secret = process.env.JWT_ACCESS_SECRET!
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET!) as unknown as AuthPayload;
+        const decoded = jwt.verify(token, secret) as unknown as AuthPayload;
         req.userId = decoded.userId;
 
         next();
