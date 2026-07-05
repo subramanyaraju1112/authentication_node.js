@@ -258,8 +258,8 @@ const refreshToken = async ({ token }: refreshTokenInput) => {
 
     const expiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     findToken.token = newRefreshToken;
-        findToken.expiresAt = expiry;
-        await findToken.save();
+    findToken.expiresAt = expiry;
+    await findToken.save();
 
     return {
         accessToken: newAccessToken,
@@ -267,7 +267,14 @@ const refreshToken = async ({ token }: refreshTokenInput) => {
     }
 }
 
-const logout = async () => {
+const logout = async ({ token }: refreshTokenInput) => {
+    const findToken = await RefreshToken.findOne({ token });
+
+    if (!findToken) {
+        throw new Error("Refresh Token not found")
+    }
+
+    await findToken.deleteOne();
     return true;
 }
 
