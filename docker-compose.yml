@@ -2,7 +2,7 @@ services:
   authentication-api:
     build: .
     container_name: authentication-api
-    restart: always
+    restart: unless-stopped
     ports:
       - "3000:3000"
     env_file:
