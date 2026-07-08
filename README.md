@@ -545,7 +545,7 @@ docker image prune
 
 ---
 
-# 🖥️ Useful Linux Commands
+# Useful Linux Commands
 
 Check Current Directory
 
@@ -631,7 +631,7 @@ sudo nginx -t
 
 ---
 
-# 👨‍💻 Author
+# Author
 
 **Subramanya Raju S**
 
