@@ -1,24 +1,25 @@
 # Authentication API
 
-A production-ready Authentication API built using **Node.js**, **Express.js**, **TypeScript**, **MongoDB**, **Docker**, **Docker Compose**, and deployed on **AWS EC2**.
+A production-ready Authentication API built using **Node.js**, **Express.js**, **TypeScript**, **MongoDB**, **Docker**, **Docker Compose**, **NGINX**, and deployed on **AWS EC2**.
 
 ---
 
 # Features
 
 - User Signup
-- User Login
+- User Signin
 - Email OTP Verification
 - Resend OTP
 - JWT Authentication
-- Access Token
+- Access Token & Refresh Token Strategy
 - Refresh Token Rotation
 - Logout
 - Protected Routes
 - Password Hashing using bcrypt
 - Dockerized Application
 - MongoDB Container
-- AWS EC2 Deployment
+- NGINX Reverse Proxy
+- Production-style Deployment on AWS EC2
 
 ---
 
@@ -37,7 +38,8 @@ A production-ready Authentication API built using **Node.js**, **Express.js**, *
 
 ## Authentication
 
-- JWT
+- JWT (Access Token)
+- JWT (Refresh Token)
 - bcryptjs
 
 ## Email
@@ -48,22 +50,23 @@ A production-ready Authentication API built using **Node.js**, **Express.js**, *
 
 - Docker
 - Docker Compose
+- NGINX
 - AWS EC2
-- Ubuntu
+- Ubuntu Linux
 
 ---
 
 # Project Structure
 
-```
+```text
 src
 │
 ├── config
-│     db.ts
+│     └── db.ts
 │
 ├── controllers
 │
-├── middleware
+├── middlewares
 │
 ├── models
 │
@@ -82,8 +85,11 @@ src
 
 # Authentication Flow
 
-```
-Signup
+```text
+Client
+   │
+   ▼
+Signup Request
    │
    ▼
 Check Existing User
@@ -99,13 +105,16 @@ Store User
    │
    ▼
 Send OTP Email
+   │
+   ▼
+Success Response
 ```
 
 ---
 
-# OTP Verification
+# OTP Verification Flow
 
-```
+```text
 Receive Email + OTP
         │
         ▼
@@ -115,17 +124,20 @@ Find User
 Check OTP
         │
         ▼
-Check Expiry
+Check OTP Expiry
         │
         ▼
 Mark User Verified
+        │
+        ▼
+Success Response
 ```
 
 ---
 
 # Signin Flow
 
-```
+```text
 Receive Credentials
         │
         ▼
@@ -154,17 +166,14 @@ Return Tokens
 
 # Refresh Token Flow
 
-```
+```text
 Receive Refresh Token
         │
         ▼
 Verify JWT
         │
         ▼
-Find Token in Database
-        │
-        ▼
-Check Revoked
+Find Refresh Token
         │
         ▼
 Check Expiry
@@ -176,27 +185,27 @@ Generate New Access Token
 Generate New Refresh Token
         │
         ▼
-Replace Old Refresh Token
+Replace Existing Refresh Token
         │
         ▼
-Return Tokens
+Return New Tokens
 ```
 
 ---
 
 # Logout Flow
 
-```
+```text
 Receive Refresh Token
         │
         ▼
-Find Token
+Find Refresh Token
         │
         ▼
 Delete Refresh Token
         │
         ▼
-User Logged Out
+Logout Successful
 ```
 
 ---
@@ -205,14 +214,14 @@ User Logged Out
 
 ## users
 
-```
+```text
 _id
 username
 email
 password
-isVerified
 otp
 otpExpiry
+isVerified
 createdAt
 updatedAt
 ```
@@ -221,7 +230,7 @@ updatedAt
 
 ## refresh_tokens
 
-```
+```text
 _id
 userId
 token
@@ -237,16 +246,19 @@ updatedAt
 
 ## Access Token
 
-- Short-lived
-- Used for protected APIs
+- Short-lived Token
+- Sent with every protected request
+- Stored on client-side
+- Used for Authentication
 
 ---
 
 ## Refresh Token
 
-- Long-lived
+- Long-lived Token
 - Stored in MongoDB
 - Rotated after every refresh
+- Used to generate new Access Tokens
 
 ---
 
@@ -254,7 +266,7 @@ updatedAt
 
 ## Dockerfile
 
-```
+```dockerfile
 FROM node:22-alpine
 
 WORKDIR /app
@@ -269,192 +281,360 @@ RUN npm run build
 
 EXPOSE 3000
 
-CMD ["npm","start"]
+CMD ["npm", "start"]
 ```
 
 ---
 
 # Docker Compose
 
-Two containers are created.
+The project runs two Docker containers.
 
-```
+```text
 authentication-api
         │
         ▼
 mongodb
 ```
 
+Start containers
+
+```bash
+docker compose up -d
+```
+
+Build and start
+
+```bash
+docker compose up -d --build
+```
+
+Stop containers
+
+```bash
+docker compose down
+```
+
 ---
 
-# Docker Network
+# Docker Networking
 
 Docker Compose automatically creates an internal network.
 
-Node.js connects using
+The Authentication API communicates with MongoDB using the Docker service name.
 
-```
+```text
 mongodb://mongodb:27017/auth
 ```
 
-Notice:
-
-```
-mongodb
-```
-
-is the service name,
-NOT localhost.
+> **Important**
+>
+> `mongodb` is the Docker service name.
+>
+> It is **NOT** `localhost`.
 
 ---
 
-# AWS Deployment
+# AWS EC2 Deployment
 
-EC2 Instance
+The application is deployed on an **Ubuntu EC2 Instance**.
 
-```
-Ubuntu 26.04 LTS
-```
+Deployment Steps
 
-Docker installed
+```bash
+git clone <repository-url>
 
-```
-sudo apt install docker.io
-```
+cd authentication_node.js
 
-Docker Compose
-
-```
-docker compose
-```
-
-Repository cloned
-
-```
-git clone
-```
-
-Project started
-
-```
 docker compose up -d --build
+```
+
+---
+
+# NGINX Reverse Proxy
+
+NGINX is installed on the EC2 host machine.
+
+Instead of exposing the Node.js application directly to the internet, NGINX acts as a Reverse Proxy.
+
+Incoming requests:
+
+```text
+Internet
+      │
+      ▼
+NGINX (Port 80)
+      │
+      ▼
+localhost:3000
+      │
+      ▼
+Authentication API
+```
+
+Benefits
+
+- Hides internal application port
+- Single public entry point
+- Easier HTTPS configuration
+- Better Security
+- Production-ready Architecture
+
+---
+
+# NGINX Configuration
+
+```nginx
+server {
+
+    listen 80;
+
+    server_name _;
+
+    location / {
+
+        proxy_pass http://localhost:3000;
+
+        proxy_http_version 1.1;
+
+        proxy_set_header Upgrade $http_upgrade;
+
+        proxy_set_header Connection "upgrade";
+
+        proxy_set_header Host $host;
+
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+```
+
+Validate configuration
+
+```bash
+sudo nginx -t
+```
+
+Reload NGINX
+
+```bash
+sudo systemctl reload nginx
 ```
 
 ---
 
 # Security Group Configuration
 
-Allowed Ports
-
 | Port | Purpose |
 |------|----------|
-|22|SSH|
-|80|HTTP|
-|443|HTTPS|
-|3000|Node API (Development)|
+| 22 | SSH |
+| 80 | HTTP |
+| 443 | HTTPS |
+
+> During development, **Port 3000** was temporarily opened to test the Node.js application directly.
+>
+> After configuring the NGINX Reverse Proxy, the application is accessed only through **Port 80**, making Port **3000** private.
 
 ---
 
 # Deployment Architecture
 
+```text
+                     Internet
+                          │
+                          ▼
+                  Port 80 (HTTP)
+                          │
+                          ▼
+                 NGINX Reverse Proxy
+                          │
+                          ▼
+                 localhost:3000
+                          │
+                          ▼
+          Authentication API (Docker)
+                          │
+                          ▼
+          MongoDB (Docker Container)
+                          │
+                          ▼
+                 Docker Volume
 ```
-                Internet
-                     │
-                     ▼
-        EC2 Ubuntu Server
-                     │
-              Docker Compose
-                     │
-     ┌───────────────┴───────────────┐
-     │                               │
-     ▼                               ▼
-Authentication API               MongoDB
-(Node.js)                     (Docker Container)
+
+---
+
+# Request Flow
+
+```text
+Client
+   │
+   ▼
+NGINX
+   │
+   ▼
+Authentication API
+   │
+   ▼
+MongoDB
 ```
 
 ---
 
 # Updating the Application
 
-Whenever code changes
+Whenever changes are pushed to GitHub
 
-```
+```bash
 git pull origin main
 
 docker compose up -d --build
 ```
 
-No need to restart EC2.
-
----
-
-# Stopping Containers
-
-```
-docker compose down
-```
-
----
-
-# Starting Containers
-
-```
-docker compose up -d
-```
+No need to restart the EC2 instance.
 
 ---
 
 # Useful Docker Commands
 
-Show running containers
+Running Containers
 
-```
+```bash
 docker ps
 ```
 
-Show all containers
+All Containers
 
-```
+```bash
 docker ps -a
 ```
 
-Show images
+Docker Images
 
-```
+```bash
 docker images
 ```
 
-Show logs
+Application Logs
 
-```
+```bash
 docker compose logs -f
 ```
 
-Remove unused images
+Stop Containers
 
+```bash
+docker compose down
 ```
+
+Start Containers
+
+```bash
+docker compose up -d
+```
+
+Rebuild Containers
+
+```bash
+docker compose up -d --build
+```
+
+Remove Unused Images
+
+```bash
 docker image prune
 ```
 
 ---
 
-# Future Improvements
+# 🖥️ Useful Linux Commands
 
-- Reverse Proxy using NGINX
-- HTTPS using Let's Encrypt
-- Custom Domain
-- GitHub Actions CI/CD
-- AWS CloudWatch Monitoring
-- Load Balancer
-- ECS Deployment
-- Kubernetes
+Check Current Directory
+
+```bash
+pwd
+```
+
+List Files
+
+```bash
+ls
+```
+
+SSH into EC2
+
+```bash
+ssh -i ~/.ssh/<key-name>.pem ubuntu@<EC2_PUBLIC_IP>
+```
+
+NGINX Status
+
+```bash
+sudo systemctl status nginx
+```
+
+Restart NGINX
+
+```bash
+sudo systemctl restart nginx
+```
+
+Reload NGINX
+
+```bash
+sudo systemctl reload nginx
+```
+
+Test NGINX Configuration
+
+```bash
+sudo nginx -t
+```
 
 ---
 
-# Author
+# API Endpoints
 
-Subramanya Raju S
+## Public Routes
+
+| Method | Endpoint |
+|----------|-----------------------------|
+| POST | `/api/auth/signup` |
+| POST | `/api/auth/signin` |
+| POST | `/api/auth/verify-otp` |
+| POST | `/api/auth/resend-otp` |
+
+---
+
+## Protected Routes
+
+| Method | Endpoint |
+|----------|-----------------------------|
+| POST | `/api/auth/logout` |
+| GET | `/api/profile` |
+
+---
+
+# Future Improvements
+
+- HTTPS using Let's Encrypt
+- Custom Domain
+- GitHub Actions CI/CD
+- Automatic Docker Deployment
+- Health Checks
+- AWS CloudWatch Monitoring
+- Docker Image Registry
+- Amazon ECS Deployment
+- Kubernetes
+- Load Balancer
+- Redis for Token Caching
+- API Rate Limiting
+- Logging & Monitoring
+
+---
+
+# 👨‍💻 Author
+
+**Subramanya Raju S**
 
 Backend Developer
 
-Built with "Bold" using Node.js, TypeScript, Docker and AWS.
+Built with BOLD using **Node.js**, **TypeScript**, **Docker**, **NGINX**, **MongoDB**, and **AWS EC2**.
