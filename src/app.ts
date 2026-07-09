@@ -16,6 +16,9 @@ app.get("/health", (_, res) => {
     })
 })
 
+
+// API Routes
+
 app.use("/api/auth", authRoutes)
 app.use("/api", authenticate, profileRoutes)
 
