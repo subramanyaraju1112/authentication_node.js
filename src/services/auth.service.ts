@@ -7,6 +7,7 @@ import { sendOtpEmail } from "./email.service";
 import generateRefreshToken from "../utils/generateRefreshToken";
 import generateAccessToken from "../utils/generateAccessToken";
 import RefreshToken from "../models/refreshToken.model";
+import redisClient from "../config/redis";
 
 interface AuthPayload extends JwtPayload {
     userId: string;
@@ -40,6 +41,10 @@ interface refreshTokenInput {
     token: string;
 }
 
+export const redisKeys = {
+    otp: (email: string) => `otp:${email}`,
+};
+
 const signupUser = async ({ username, email, password }: SignupUserInput) => {
     const existingUser = await User.findOne({ email });
 
@@ -51,16 +56,14 @@ const signupUser = async ({ username, email, password }: SignupUserInput) => {
 
     const hashedPassword = await hashPassword(password);
 
-    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
-
     const user = await User.create({
         username,
         email,
         password: hashedPassword,
-        otp,
-        otpExpiry,
         isVerified: false,
     })
+
+    await redisClient.set(redisKeys.otp(email), otp, { EX: 600 });
 
     await sendOtpEmail({ email, otp });
 
@@ -123,21 +126,19 @@ const verifyOtp = async ({ email, otp }: verifyUserInput) => {
         throw new Error("User already verified")
     }
 
-    if (user.otp !== otp) {
-        throw new Error("Incorrect OTP")
+    const storedOtp = await redisClient.get(redisKeys.otp(email));
+
+    if (!storedOtp) {
+        throw new Error("OTP Expired");
     }
 
-    if (!user.otpExpiry) {
-        throw new Error("OTP expiry not found");
+    if (storedOtp !== otp) {
+        throw new Error(" Incorrect OTP")
     }
 
-    if (Date.now() > user.otpExpiry.getTime()) {
-        throw new Error("OTP expired")
-    }
-
+    await redisClient.del(redisKeys.otp(email));
     user.isVerified = true;
-    user.otp = undefined;
-    user.otpExpiry = undefined;
+
     await user.save();
 
     return {
