@@ -176,11 +176,7 @@ const resendOtp = async ({ email }: verifyUserInput) => {
 
     const newOtp = generateOtp();
 
-    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
-
-    user.otp = newOtp;
-    user.otpExpiry = otpExpiry;
-    await user.save();
+    await redisClient.set(redisKeys.otp(email), newOtp, { EX: 600 })
 
     await sendOtpEmail({ email, otp: newOtp });
 
@@ -194,14 +190,13 @@ const forgotPassword = async ({ email }: forgotPasswordInput) => {
         throw new Error("User not found")
     }
 
+    if (!user.isVerified) {
+        throw new Error("Please verify your email first");
+    }
+
     const otp = generateOtp();
 
-    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
-
-    user.otp = otp;
-    user.otpExpiry = otpExpiry;
-
-    await user.save();
+    await redisClient.set(redisKeys.passwordResetOtp(email), otp, { EX: 600 });
 
     await sendOtpEmail({ email, otp });
 
@@ -215,16 +210,14 @@ const resetPassword = async ({ email, otp, password, confirmPassword }: resetPas
         throw new Error("User not found")
     }
 
-    if (user.otp !== otp) {
+    const storedOtp = await redisClient.get(redisKeys.passwordResetOtp(email));
+
+    if (!storedOtp) {
+        throw new Error("OTP expired");
+    }
+
+    if (storedOtp !== otp) {
         throw new Error("Incorrect OTP")
-    }
-
-    if (!user.otpExpiry) {
-        throw new Error("OTP expiry not found");
-    }
-
-    if (Date.now() > user.otpExpiry.getTime()) {
-        throw new Error("OTP expired")
     }
 
     if (password !== confirmPassword) {
@@ -234,13 +227,16 @@ const resetPassword = async ({ email, otp, password, confirmPassword }: resetPas
     const hashedPassword = await hashPassword(password);
 
     user.password = hashedPassword;
-    user.otp = undefined;
-    user.otpExpiry = undefined;
+    await user.save();
 
-    await user.save()
+    await redisClient.del(redisKeys.passwordResetOtp(email));
+
+    await RefreshToken.deleteMany({
+        userId: user._id,
+    });
 
     return {
-        message: "Password reset successfull"
+        message: "Password reset successful"
     };
 }
 
