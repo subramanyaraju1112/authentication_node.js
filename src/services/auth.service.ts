@@ -8,6 +8,8 @@ import generateRefreshToken from "../utils/generateRefreshToken";
 import generateAccessToken from "../utils/generateAccessToken";
 import RefreshToken from "../models/refreshToken.model";
 import redisClient from "../config/redis";
+import { redisKeys } from "../utils/redisKeys";
+import { isLoginLocked, recordFailedLogin, resetLoginAttempts } from "../utils/loginAttempts";
 
 interface AuthPayload extends JwtPayload {
     userId: string;
@@ -41,10 +43,6 @@ interface refreshTokenInput {
     token: string;
 }
 
-export const redisKeys = {
-    otp: (email: string) => `otp:${email}`,
-};
-
 const signupUser = async ({ username, email, password }: SignupUserInput) => {
     const existingUser = await User.findOne({ email });
 
@@ -76,20 +74,32 @@ const signupUser = async ({ username, email, password }: SignupUserInput) => {
 }
 
 const signinUser = async ({ email, password }: SigninUserInput) => {
+
+    if (await isLoginLocked(email)) {
+        throw new Error("Too many failed login attempts.Please try again after 15 minutes.")
+    }
+
     const user = await User.findOne({ email });
 
     if (!user) {
         throw new Error("Invalid credentials")
     }
 
+    if (!user.isVerified) {
+        throw new Error("Please verify your email first")
+    }
+
     const isPasswordValid = await comparePassword(password, user.password);
 
     if (!isPasswordValid) {
-        throw new Error("Invalid credentials")
-    }
+        const { locked } = await recordFailedLogin(email);
+        if (locked) {
+            throw new Error(
+                "Too many failed login attempts. Please try again after 15 minutes."
+            );
+        }
 
-    if (!user.isVerified) {
-        throw new Error("Please verify your email first")
+        throw new Error("Invalid credentials")
     }
 
     const accessToken = generateAccessToken(user._id.toString());
@@ -104,6 +114,9 @@ const signinUser = async ({ email, password }: SigninUserInput) => {
         token: refreshToken,
         expiresAt
     })
+
+    await resetLoginAttempts(email);
+
 
     return {
         id: user._id.toString(),
