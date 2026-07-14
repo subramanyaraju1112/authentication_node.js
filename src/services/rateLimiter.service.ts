@@ -1,32 +1,35 @@
-import { NextFunction } from "express";
 import redisClient from "../config/redis";
+import {
+  LOGIN_LOCK_TIME,
+  MAX_LOGIN_ATTEMPTS,
+} from "../constants/auth.constants";
 import { redisKeys } from "../utils/redisKeys";
 
-interface rateLimitInput {
-    email: string;
-    ip: string;
+interface RateLimitInput {
+  email: string;
+  ip: string;
 }
 
-export const checkLimit = async ({email, ip}: rateLimitInput) => {
+export const checkLimit = async ({ email, ip }: RateLimitInput): Promise<void> => {
+  const attempts = await redisClient.get(redisKeys.loginAttempts(email, ip));
+  const count = Number(attempts ?? 0);
 
-const attempts = await redisClient.get(redisKeys.loginAttempts(email, ip));
+  if (count >= MAX_LOGIN_ATTEMPTS) {
+    throw new Error("Too many login attempts. Try again after 15 minutes.");
+  }
+};
 
-const counts = Number(attempts ?? 0);
-if(attempts >=5){
-    return res.status(429).json({
-        success: false,
-        message: "Too many login attempts. Try again after 15 minutes."
-    })
-}
-next();
-}
+export const incrementAttempts = async ({ email, ip }: RateLimitInput): Promise<number> => {
+  const key = redisKeys.loginAttempts(email, ip);
+  const count = await redisClient.incr(key);
 
-export const incrementAttempt = async ({email, ip}: rateLimitInput) => {
+  if (count === 1) {
+    await redisClient.expire(key, LOGIN_LOCK_TIME);
+  }
+  return count;
+};
 
-}
-
-export const resetAttempts = async({email, ip}: rateLimitInput) => {
-    
-}
-
-
+export const resetAttempts = async ({ email, ip }: RateLimitInput): Promise<void> => {
+  const key = redisKeys.loginAttempts(email, ip);
+  await redisClient.del(key);
+};
