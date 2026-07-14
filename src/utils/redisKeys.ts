@@ -3,7 +3,7 @@ export const redisKeys = {
 
     passwordResetOtp: (email: string) => `password-reset:${email}`,
 
-    loginAttempts: (email: string) => `login:attempts:${email}`,
+    loginAttempts: (email: string, ip: string) => `login:attempts:${email}:${ip}`,
 
     loginLock: (email: string) => `login:lock${email}`
 };
