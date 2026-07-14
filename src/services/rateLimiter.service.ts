@@ -10,7 +10,7 @@ interface RateLimitInput {
   ip: string;
 }
 
-export const checkLimit = async ({ email, ip }: RateLimitInput): Promise<void> => {
+export const checkLoginAttempts = async ({ email, ip }: RateLimitInput): Promise<void> => {
   const attempts = await redisClient.get(redisKeys.loginAttempts(email, ip));
   const count = Number(attempts ?? 0);
 

@@ -9,7 +9,7 @@ import generateAccessToken from "../utils/generateAccessToken";
 import RefreshToken from "../models/refreshToken.model";
 import redisClient from "../config/redis";
 import { redisKeys } from "../utils/redisKeys";
-import { isLoginLocked, recordFailedLogin, resetLoginAttempts } from "../utils/loginAttempts";
+import { checkLoginAttempts, incrementAttempts, resetAttempts } from "./rateLimiter.service";
 
 interface AuthPayload extends JwtPayload {
     userId: string;
@@ -21,6 +21,7 @@ interface SignupUserInput {
 }
 interface SigninUserInput {
     email: string;
+    ip: string;
     password: string;
 }
 interface verifyUserInput {
@@ -73,34 +74,31 @@ const signupUser = async ({ username, email, password }: SignupUserInput) => {
     };
 }
 
-const signinUser = async ({ email, password }: SigninUserInput) => {
+const signinUser = async ({ email, ip, password }: SigninUserInput) => {
 
-    if (await isLoginLocked(email)) {
-        throw new Error("Too many failed login attempts.Please try again after 15 minutes.")
-    }
+    await checkLoginAttempts({ email, ip });
 
     const user = await User.findOne({ email });
 
     if (!user) {
+        await incrementAttempts({ email, ip });
         throw new Error("Invalid credentials")
     }
 
     if (!user.isVerified) {
+        await incrementAttempts({ email, ip });
         throw new Error("Please verify your email first")
     }
 
     const isPasswordValid = await comparePassword(password, user.password);
 
     if (!isPasswordValid) {
-        const { locked } = await recordFailedLogin(email);
-        if (locked) {
-            throw new Error(
-                "Too many failed login attempts. Please try again after 15 minutes."
-            );
-        }
+        await incrementAttempts({ email, ip });
 
         throw new Error("Invalid credentials")
     }
+
+    await resetAttempts({ email, ip });
 
     const accessToken = generateAccessToken(user._id.toString());
     const refreshToken = generateRefreshToken(user._id.toString())
@@ -114,9 +112,6 @@ const signinUser = async ({ email, password }: SigninUserInput) => {
         token: refreshToken,
         expiresAt
     })
-
-    await resetLoginAttempts(email);
-
 
     return {
         id: user._id.toString(),
