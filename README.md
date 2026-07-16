@@ -2,6 +2,10 @@
 
 A production-ready Authentication API built using **Node.js**, **Express.js**, **TypeScript**, **MongoDB**, **Docker**, **Docker Compose**, **NGINX**, and deployed on **AWS EC2**.
 
+> **API Base URL**
+>
+> `https://api.subramanyaraju.com`
+
 ---
 
 # Features
@@ -35,6 +39,7 @@ A production-ready Authentication API built using **Node.js**, **Express.js**, *
 
 - MongoDB
 - Mongoose
+- Redis
 
 ## Authentication
 
@@ -53,6 +58,7 @@ A production-ready Authentication API built using **Node.js**, **Express.js**, *
 - NGINX
 - AWS EC2
 - Ubuntu Linux
+- Let's Encrypt (Certbot)
 
 ---
 
@@ -60,24 +66,23 @@ A production-ready Authentication API built using **Node.js**, **Express.js**, *
 
 ```text
 src
-│
 ├── config
-│     └── db.ts
-│
+│   ├── db.ts
+│   └── redis.ts
+├── constants
 ├── controllers
-│
-├── middlewares
-│
+├── middleware
 ├── models
-│
 ├── routes
-│
 ├── services
-│
+│   ├── auth.service.ts
+│   └── rateLimiter.service.ts
 ├── utils
-│
+│   ├── redisKeys.ts
+│   ├── generateOtp.ts
+│   ├── hashPassword.ts
+│   └── sendEmail.ts
 ├── app.ts
-│
 └── server.ts
 ```
 
@@ -86,28 +91,19 @@ src
 # Authentication Flow
 
 ```text
-Client
-   │
-   ▼
-Signup Request
-   │
-   ▼
+Signup
+  ↓
 Check Existing User
-   │
-   ▼
+  ↓
 Hash Password
-   │
-   ▼
+  ↓
 Generate OTP
-   │
-   ▼
+  ↓
+Store OTP in Redis (10 min TTL)
+  ↓
 Store User
-   │
-   ▼
+  ↓
 Send OTP Email
-   │
-   ▼
-Success Response
 ```
 
 ---
@@ -115,22 +111,15 @@ Success Response
 # OTP Verification Flow
 
 ```text
-Receive Email + OTP
-        │
-        ▼
-Find User
-        │
-        ▼
-Check OTP
-        │
-        ▼
-Check OTP Expiry
-        │
-        ▼
-Mark User Verified
-        │
-        ▼
-Success Response
+Receive OTP
+  ↓
+Read OTP from Redis
+  ↓
+Validate OTP
+  ↓
+Verify User
+  ↓
+Delete OTP
 ```
 
 ---
@@ -138,28 +127,43 @@ Success Response
 # Signin Flow
 
 ```text
-Receive Credentials
-        │
-        ▼
+Signin Request
+      │
+      ▼
+Check Login Attempts (Redis)
+      │
+      ▼
 Find User
-        │
-        ▼
+      │
+      ▼
+Verify Email
+      │
+      ▼
 Compare Password
-        │
-        ▼
-Check Email Verification
-        │
-        ▼
-Generate Access Token
-        │
-        ▼
-Generate Refresh Token
-        │
-        ▼
-Store Refresh Token
-        │
-        ▼
-Return Tokens
+      │
+      ▼
+Success?
+  │           │
+ No          Yes
+  │           │
+  ▼           ▼
+Increment   Reset Attempts
+Attempts      │
+  │           ▼
+  └────► Generate Tokens
+             │
+             ▼
+      Store Refresh Token
+```
+
+## Rate Limiting
+
+- Maximum Attempts: **5**
+- Lock Time: **15 Minutes**
+- Redis Key:
+
+```text
+login_attempts:<email>:<ip>
 ```
 
 ---
@@ -425,10 +429,10 @@ sudo systemctl reload nginx
 # Security Group Configuration
 
 | Port | Purpose |
-|------|----------|
-| 22 | SSH |
-| 80 | HTTP |
-| 443 | HTTPS |
+| ---- | ------- |
+| 22   | SSH     |
+| 80   | HTTP    |
+| 443  | HTTPS   |
 
 > During development, **Port 3000** was temporarily opened to test the Node.js application directly.
 >
@@ -439,25 +443,20 @@ sudo systemctl reload nginx
 # Deployment Architecture
 
 ```text
-                     Internet
-                          │
-                          ▼
-                  Port 80 (HTTP)
-                          │
-                          ▼
-                 NGINX Reverse Proxy
-                          │
-                          ▼
-                 localhost:3000
-                          │
-                          ▼
-          Authentication API (Docker)
-                          │
-                          ▼
-          MongoDB (Docker Container)
-                          │
-                          ▼
-                 Docker Volume
+Internet
+    │
+    ▼
+https://api.subramanyaraju.com
+    │
+    ▼
+NGINX
+    │
+    ▼
+Authentication API (Docker)
+    │
+ ┌──┴────────┐
+ ▼           ▼
+MongoDB    Redis
 ```
 
 ---
@@ -545,6 +544,22 @@ docker image prune
 
 ---
 
+## Redis Commands
+
+``` bash
+docker exec -it redis redis-cli
+```
+
+``` redis
+PING
+KEYS *
+GET <key>
+TTL <key>
+DEL <key>
+```
+
+---
+
 # Useful Linux Commands
 
 Check Current Directory
@@ -595,28 +610,26 @@ sudo nginx -t
 
 ## Public Routes
 
-| Method | Endpoint |
-|----------|-----------------------------|
-| POST | `/api/auth/signup` |
-| POST | `/api/auth/signin` |
-| POST | `/api/auth/verify-otp` |
-| POST | `/api/auth/resend-otp` |
+| Method | Endpoint               |
+| ------ | ---------------------- |
+| POST   | `/api/auth/signup`     |
+| POST   | `/api/auth/signin`     |
+| POST   | `/api/auth/verify-otp` |
+| POST   | `/api/auth/resend-otp` |
 
 ---
 
 ## Protected Routes
 
-| Method | Endpoint |
-|----------|-----------------------------|
-| POST | `/api/auth/logout` |
-| GET | `/api/profile` |
+| Method | Endpoint           |
+| ------ | ------------------ |
+| POST   | `/api/auth/logout` |
+| GET    | `/api/profile`     |
 
 ---
 
 # Future Improvements
 
-- HTTPS using Let's Encrypt
-- Custom Domain
 - GitHub Actions CI/CD
 - Automatic Docker Deployment
 - Health Checks
@@ -625,8 +638,6 @@ sudo nginx -t
 - Amazon ECS Deployment
 - Kubernetes
 - Load Balancer
-- Redis for Token Caching
-- API Rate Limiting
 - Logging & Monitoring
 
 ---
