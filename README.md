@@ -1,6 +1,6 @@
 # Authentication API
 
-A production-ready Authentication API built using **Node.js**, **Express.js**, **TypeScript**, **MongoDB**, **Docker**, **Docker Compose**, **NGINX**, and deployed on **AWS EC2**.
+A production-ready Authentication API built using **Node.js**, **Express.js**, **TypeScript**, **MongoDB**, **Redis**, **Docker**, **Docker Compose**, **NGINX**, and deployed on **AWS EC2**.
 
 > **API Base URL**
 >
@@ -8,7 +8,35 @@ A production-ready Authentication API built using **Node.js**, **Express.js**, *
 
 ---
 
-# Features
+## Table of Contents
+
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+- [Environment Variables](#environment-variables)
+- [Authentication Flow](#authentication-flow)
+- [OTP Verification Flow](#otp-verification-flow)
+- [Signin Flow](#signin-flow)
+- [Refresh Token Flow](#refresh-token-flow)
+- [Logout Flow](#logout-flow)
+- [Database Collections](#database-collections)
+- [JWT Strategy](#jwt-strategy)
+- [Dockerization](#dockerization)
+- [AWS EC2 Deployment](#aws-ec2-deployment)
+- [NGINX Reverse Proxy](#nginx-reverse-proxy)
+- [Security Group Configuration](#security-group-configuration)
+- [Deployment Architecture](#deployment-architecture)
+- [Updating the Application](#updating-the-application)
+- [Useful Commands](#useful-commands)
+- [API Endpoints](#api-endpoints)
+- [Future Improvements](#future-improvements)
+- [License](#license)
+- [Author](#author)
+
+---
+
+## Features
 
 - User Signup
 - User Signin
@@ -21,38 +49,33 @@ A production-ready Authentication API built using **Node.js**, **Express.js**, *
 - Protected Routes
 - Password Hashing using bcrypt
 - Dockerized Application
-- MongoDB Container
+- MongoDB & Redis Containers
 - NGINX Reverse Proxy
 - Production-style Deployment on AWS EC2
 
 ---
 
-# Tech Stack
+## Tech Stack
 
-## Backend
-
+### Backend
 - Node.js
 - Express.js
 - TypeScript
 
-## Database
-
+### Database
 - MongoDB
 - Mongoose
 - Redis
 
-## Authentication
-
+### Authentication
 - JWT (Access Token)
 - JWT (Refresh Token)
 - bcryptjs
 
-## Email
-
+### Email
 - Nodemailer
 
-## DevOps
-
+### DevOps
 - Docker
 - Docker Compose
 - NGINX
@@ -62,7 +85,7 @@ A production-ready Authentication API built using **Node.js**, **Express.js**, *
 
 ---
 
-# Project Structure
+## Project Structure
 
 ```text
 src
@@ -88,7 +111,65 @@ src
 
 ---
 
-# Authentication Flow
+## Getting Started
+
+### Prerequisites
+
+- Node.js 22+
+- Docker & Docker Compose
+- MongoDB (local or containerized)
+- Redis (local or containerized)
+
+### Local Setup
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd authentication_node.js
+
+# Install dependencies
+npm install
+
+# Copy environment variables and fill in your values
+cp .env.example .env
+
+# Run in development mode
+npm run dev
+```
+
+### Run with Docker
+
+```bash
+docker compose up -d --build
+```
+
+---
+
+## Environment Variables
+
+Create a `.env` file in the project root with the following keys:
+
+```env
+PORT=3000
+MONGODB_URI=mongodb://mongodb:27017/auth
+REDIS_URL=redis://redis:6379
+
+JWT_ACCESS_SECRET=your_access_token_secret
+JWT_REFRESH_SECRET=your_refresh_token_secret
+JWT_ACCESS_EXPIRY=15m
+JWT_REFRESH_EXPIRY=7d
+
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USER=your_smtp_user
+SMTP_PASS=your_smtp_password
+```
+
+> Keep `.env` out of version control. Use `.env.example` as a template for required keys.
+
+---
+
+## Authentication Flow
 
 ```text
 Signup
@@ -108,7 +189,7 @@ Send OTP Email
 
 ---
 
-# OTP Verification Flow
+## OTP Verification Flow
 
 ```text
 Receive OTP
@@ -124,7 +205,7 @@ Delete OTP
 
 ---
 
-# Signin Flow
+## Signin Flow
 
 ```text
 Signin Request
@@ -156,7 +237,7 @@ Attempts      │
       Store Refresh Token
 ```
 
-## Rate Limiting
+### Rate Limiting
 
 - Maximum Attempts: **5**
 - Lock Time: **15 Minutes**
@@ -168,7 +249,7 @@ login_attempts:<email>:<ip>
 
 ---
 
-# Refresh Token Flow
+## Refresh Token Flow
 
 ```text
 Receive Refresh Token
@@ -197,7 +278,7 @@ Return New Tokens
 
 ---
 
-# Logout Flow
+## Logout Flow
 
 ```text
 Receive Refresh Token
@@ -214,9 +295,9 @@ Logout Successful
 
 ---
 
-# Database Collections
+## Database Collections
 
-## users
+### users
 
 ```text
 _id
@@ -230,9 +311,7 @@ createdAt
 updatedAt
 ```
 
----
-
-## refresh_tokens
+### refresh_tokens
 
 ```text
 _id
@@ -246,19 +325,15 @@ updatedAt
 
 ---
 
-# JWT Strategy
+## JWT Strategy
 
-## Access Token
-
+### Access Token
 - Short-lived Token
 - Sent with every protected request
 - Stored on client-side
 - Used for Authentication
 
----
-
-## Refresh Token
-
+### Refresh Token
 - Long-lived Token
 - Stored in MongoDB
 - Rotated after every refresh
@@ -266,9 +341,9 @@ updatedAt
 
 ---
 
-# Dockerization
+## Dockerization
 
-## Dockerfile
+### Dockerfile
 
 ```dockerfile
 FROM node:22-alpine
@@ -288,17 +363,16 @@ EXPOSE 3000
 CMD ["npm", "start"]
 ```
 
----
+### Docker Compose
 
-# Docker Compose
-
-The project runs two Docker containers.
+The project runs three Docker containers.
 
 ```text
 authentication-api
         │
-        ▼
-mongodb
+   ┌────┴────┐
+   ▼         ▼
+mongodb    redis
 ```
 
 Start containers
@@ -319,27 +393,26 @@ Stop containers
 docker compose down
 ```
 
----
-
-# Docker Networking
+### Docker Networking
 
 Docker Compose automatically creates an internal network.
 
-The Authentication API communicates with MongoDB using the Docker service name.
+The Authentication API communicates with MongoDB and Redis using their Docker service names.
 
 ```text
 mongodb://mongodb:27017/auth
+redis://redis:6379
 ```
 
 > **Important**
 >
-> `mongodb` is the Docker service name.
+> `mongodb` and `redis` are Docker service names.
 >
-> It is **NOT** `localhost`.
+> They are **NOT** `localhost`.
 
 ---
 
-# AWS EC2 Deployment
+## AWS EC2 Deployment
 
 The application is deployed on an **Ubuntu EC2 Instance**.
 
@@ -355,7 +428,7 @@ docker compose up -d --build
 
 ---
 
-# NGINX Reverse Proxy
+## NGINX Reverse Proxy
 
 NGINX is installed on the EC2 host machine.
 
@@ -376,7 +449,7 @@ localhost:3000
 Authentication API
 ```
 
-Benefits
+### Benefits
 
 - Hides internal application port
 - Single public entry point
@@ -384,9 +457,7 @@ Benefits
 - Better Security
 - Production-ready Architecture
 
----
-
-# NGINX Configuration
+### NGINX Configuration
 
 ```nginx
 server {
@@ -426,7 +497,7 @@ sudo systemctl reload nginx
 
 ---
 
-# Security Group Configuration
+## Security Group Configuration
 
 | Port | Purpose |
 | ---- | ------- |
@@ -440,7 +511,7 @@ sudo systemctl reload nginx
 
 ---
 
-# Deployment Architecture
+## Deployment Architecture
 
 ```text
 Internet
@@ -459,9 +530,7 @@ Authentication API (Docker)
 MongoDB    Redis
 ```
 
----
-
-# Request Flow
+### Request Flow
 
 ```text
 Client
@@ -478,9 +547,9 @@ MongoDB
 
 ---
 
-# Updating the Application
+## Updating the Application
 
-Whenever changes are pushed to GitHub
+Whenever changes are pushed to GitHub:
 
 ```bash
 git pull origin main
@@ -492,65 +561,28 @@ No need to restart the EC2 instance.
 
 ---
 
-# Useful Docker Commands
+## Useful Commands
 
-Running Containers
-
-```bash
-docker ps
-```
-
-All Containers
+### Docker
 
 ```bash
-docker ps -a
+docker ps                  # Running containers
+docker ps -a                # All containers
+docker images                # Docker images
+docker compose logs -f       # Application logs
+docker compose down          # Stop containers
+docker compose up -d         # Start containers
+docker compose up -d --build # Rebuild containers
+docker image prune           # Remove unused images
 ```
 
-Docker Images
+### Redis
 
 ```bash
-docker images
-```
-
-Application Logs
-
-```bash
-docker compose logs -f
-```
-
-Stop Containers
-
-```bash
-docker compose down
-```
-
-Start Containers
-
-```bash
-docker compose up -d
-```
-
-Rebuild Containers
-
-```bash
-docker compose up -d --build
-```
-
-Remove Unused Images
-
-```bash
-docker image prune
-```
-
----
-
-## Redis Commands
-
-``` bash
 docker exec -it redis redis-cli
 ```
 
-``` redis
+```redis
 PING
 KEYS *
 GET <key>
@@ -558,77 +590,41 @@ TTL <key>
 DEL <key>
 ```
 
----
-
-# Useful Linux Commands
-
-Check Current Directory
+### Linux / EC2
 
 ```bash
-pwd
-```
-
-List Files
-
-```bash
-ls
-```
-
-SSH into EC2
-
-```bash
-ssh -i ~/.ssh/<key-name>.pem ubuntu@<EC2_PUBLIC_IP>
-```
-
-NGINX Status
-
-```bash
-sudo systemctl status nginx
-```
-
-Restart NGINX
-
-```bash
-sudo systemctl restart nginx
-```
-
-Reload NGINX
-
-```bash
-sudo systemctl reload nginx
-```
-
-Test NGINX Configuration
-
-```bash
-sudo nginx -t
+pwd                                          # Current directory
+ls                                           # List files
+ssh -i ~/.ssh/<key-name>.pem ubuntu@<EC2_PUBLIC_IP>  # SSH into EC2
+sudo systemctl status nginx                  # NGINX status
+sudo systemctl restart nginx                 # Restart NGINX
+sudo systemctl reload nginx                  # Reload NGINX
+sudo nginx -t                                # Test NGINX config
 ```
 
 ---
 
-# API Endpoints
+## API Endpoints
 
-## Public Routes
+### Public Routes
 
 | Method | Endpoint               |
-| ------ | ---------------------- |
+| ------ | ----------------------- |
 | POST   | `/api/auth/signup`     |
 | POST   | `/api/auth/signin`     |
 | POST   | `/api/auth/verify-otp` |
 | POST   | `/api/auth/resend-otp` |
 
----
-
-## Protected Routes
+### Protected Routes
 
 | Method | Endpoint           |
-| ------ | ------------------ |
+| ------ | ------------------- |
 | POST   | `/api/auth/logout` |
 | GET    | `/api/profile`     |
 
 ---
 
-# Future Improvements
+## Future Improvements
 
 - GitHub Actions CI/CD
 - Automatic Docker Deployment
@@ -642,10 +638,16 @@ sudo nginx -t
 
 ---
 
-# Author
+## License
+
+This project is licensed under the [MIT License](LICENSE).
+
+---
+
+## Author
 
 **Subramanya Raju S**
 
 Backend Developer
 
-Built with BOLD using **Node.js**, **TypeScript**, **Docker**, **NGINX**, **MongoDB**, and **AWS EC2**.
+Built with **Node.js**, **TypeScript**, **Redis**, **MongoDB**, **Docker**, **NGINX** and **AWS EC2**.
