@@ -6,6 +6,8 @@ A production-ready Authentication API built using **Node.js**, **Express.js**, *
 >
 > `https://api.subramanyaraju.com`
 
+![CI](https://github.com/<your-username>/authentication_node.js/actions/workflows/ci.yml/badge.svg)
+
 ---
 
 ## Table of Contents
@@ -15,6 +17,7 @@ A production-ready Authentication API built using **Node.js**, **Express.js**, *
 - [Project Structure](#project-structure)
 - [Getting Started](#getting-started)
 - [Environment Variables](#environment-variables)
+- [CI/CD](#cicd)
 - [Authentication Flow](#authentication-flow)
 - [OTP Verification Flow](#otp-verification-flow)
 - [Signin Flow](#signin-flow)
@@ -166,6 +169,33 @@ SMTP_PASS=your_smtp_password
 ```
 
 > Keep `.env` out of version control. Use `.env.example` as a template for required keys.
+
+---
+
+## CI/CD
+
+Continuous Integration is handled with **GitHub Actions**.
+
+### Workflow: `.github/workflows/ci.yml`
+
+Triggered on every push and pull request to `main`:
+
+```text
+Push / Pull Request
+        │
+        ▼
+Checkout Code
+        │
+        ▼
+Install Dependencies
+        │
+        ▼
+Build Application (npm run build)
+```
+
+This workflow validates that the project compiles successfully before changes are merged. It currently does **not** run automated tests or deploy — deployment to EC2 is still performed manually (see [Updating the Application](#updating-the-application)).
+
+Automated testing and deployment are tracked under [Future Improvements](#future-improvements).
 
 ---
 
@@ -626,8 +656,8 @@ sudo nginx -t                                # Test NGINX config
 
 ## Future Improvements
 
-- GitHub Actions CI/CD
-- Automatic Docker Deployment
+- Automated Testing in CI
+- Automatic Docker Deployment (CD to EC2)
 - Health Checks
 - AWS CloudWatch Monitoring
 - Docker Image Registry
