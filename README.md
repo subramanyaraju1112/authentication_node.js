@@ -623,13 +623,13 @@ DEL <key>
 ### Linux / EC2
 
 ```bash
-pwd                                          # Current directory
-ls                                           # List files
-ssh -i ~/.ssh/<key-name>.pem ubuntu@<EC2_PUBLIC_IP>  # SSH into EC2
-sudo systemctl status nginx                  # NGINX status
-sudo systemctl restart nginx                 # Restart NGINX
-sudo systemctl reload nginx                  # Reload NGINX
-sudo nginx -t                                # Test NGINX config
+pwd                                                                # Current directory
+ls                                                                 # List files
+ssh -i ~/.ssh/<key-name>.pem ubuntu@<EC2_PUBLIC_IP>                # SSH into EC2
+sudo systemctl status nginx                                        # NGINX status
+sudo systemctl restart nginx                                       # Restart NGINX
+sudo systemctl reload nginx                                        # Reload NGINX
+sudo nginx -t                                                      # Test NGINX config
 ```
 
 ---
@@ -680,4 +680,4 @@ This project is licensed under the [MIT License](LICENSE).
 
 MERN Stack Developer
 
-Built with **Node.js**, **TypeScript**, **Redis**, **MongoDB**, **Docker**, **NGINX** and **AWS EC2**.
+Built with **TypeScript**, **Node.js**, **Redis**, **MongoDB**, **Docker**, **NGINX** and **AWS EC2**.
