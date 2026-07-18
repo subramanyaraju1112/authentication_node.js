@@ -38,7 +38,8 @@ const signinController = async (req: Request, res: Response) => {
                 message: "All fields are required"
             })
         }
-        const user = await signinUser({ email, password });
+        const ip = req.ip || req.socket.remoteAddress || "unknown";
+        const user = await signinUser({ ip, email, password });
         return res.status(200).json({
             success: true,
             message: "User logged in successfully",
