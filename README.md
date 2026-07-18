@@ -678,6 +678,6 @@ This project is licensed under the [MIT License](LICENSE).
 
 **Subramanya Raju S**
 
-Backend Developer
+MERN Stack Developer
 
 Built with **Node.js**, **TypeScript**, **Redis**, **MongoDB**, **Docker**, **NGINX** and **AWS EC2**.
