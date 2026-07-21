@@ -1,14 +1,12 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { forgotPassword, logout, refreshAccessToken, resendOtp, resetPassword, signinUser, signupUser, verifyOtp } from "../services/auth.service";
+import { BadRequestError } from "../errors/BadRequestError";
 
-const signupController = async (req: Request, res: Response) => {
+const signupController = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { username, email, password } = req.body;
         if (!username || !email || !password) {
-            return res.status(400).json({
-                success: false,
-                message: "All fields are required"
-            })
+            throw new BadRequestError("All fields are required")
         }
 
         const user = await signupUser({ username, email, password });
@@ -19,24 +17,15 @@ const signupController = async (req: Request, res: Response) => {
         })
     }
     catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: error instanceof Error
-                ? error.message
-                : "Internal server error"
-        })
+        next(error)
     }
-
 }
 
-const signinController = async (req: Request, res: Response) => {
+const signinController = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { email, password } = req.body;
         if (!email || !password) {
-            return res.status(400).json({
-                success: false,
-                message: "All fields are required"
-            })
+            throw new BadRequestError("All fields are required");
         }
         const ip = req.ip || req.socket.remoteAddress || "unknown";
         const user = await signinUser({ ip, email, password });
@@ -47,44 +36,15 @@ const signinController = async (req: Request, res: Response) => {
         })
 
     } catch (error) {
-        if (
-            error instanceof Error &&
-            error.message === "Invalid credentials"
-        ) {
-            return res.status(401).json({
-                success: false,
-                message: error.message
-            });
-        }
-
-        if (
-            error instanceof Error &&
-            error.message === "Please verify your email first"
-        ) {
-            return res.status(403).json({
-                success: false,
-                message: error.message,
-                isVerified: false
-            });
-        }
-
-        return res.status(500).json({
-            success: false,
-            message: error instanceof Error
-                ? error.message
-                : "Internal server error"
-        });
+        next(error)
     }
 }
 
-const verifyOtpController = async (req: Request, res: Response) => {
+const verifyOtpController = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { email, otp } = req.body
         if (!email || !otp) {
-            return res.status(400).json({
-                success: false,
-                message: "Email and OTP are required"
-            })
+            throw new BadRequestError("Email & OTP are required");
         }
 
         const user = await verifyOtp({ email, otp });
@@ -100,23 +60,15 @@ const verifyOtpController = async (req: Request, res: Response) => {
 
         })
     } catch (error) {
-        return res.status(400).json({
-            success: false,
-            message: error instanceof Error
-                ? error.message
-                : "Internal server error"
-        })
+        next(error)
     }
 }
 
-const resendOtpController = async (req: Request, res: Response) => {
+const resendOtpController = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { email } = req.body;
         if (!email) {
-            return res.status(400).json({
-                success: false,
-                message: "Email is required"
-            })
+            throw new BadRequestError("Email is required")
         }
 
         await resendOtp({ email });
@@ -126,23 +78,15 @@ const resendOtpController = async (req: Request, res: Response) => {
         })
 
     } catch (error) {
-        return res.status(400).json({
-            success: false,
-            message: error instanceof Error
-                ? error.message
-                : "Internal server error"
-        })
+        next(error)
     }
 }
 
-const forgotPasswordController = async (req: Request, res: Response) => {
+const forgotPasswordController = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { email } = req.body;
         if (!email) {
-            return res.status(400).json({
-                success: false,
-                message: "Email is required"
-            })
+            throw new BadRequestError("Email is required")
         }
 
         await forgotPassword({ email });
@@ -152,24 +96,16 @@ const forgotPasswordController = async (req: Request, res: Response) => {
         })
 
     } catch (error) {
-        return res.status(400).json({
-            success: false,
-            message: error instanceof Error
-                ? error.message
-                : "Internal server error"
-        })
+        next(error)
     }
 }
 
-const resetPasswordController = async (req: Request, res: Response) => {
+const resetPasswordController = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { email, otp, password, confirmPassword } = req.body;
 
         if (!email || !otp || !password || !confirmPassword) {
-            return res.status(400).json({
-                success: false,
-                message: "All fields are required"
-            })
+            throw new BadRequestError("All fields are required")
         }
         await resetPassword({ email, otp, password, confirmPassword });
         return res.status(200).json({
@@ -177,23 +113,15 @@ const resetPasswordController = async (req: Request, res: Response) => {
             message: "Password changed successfully"
         })
     } catch (error) {
-        return res.status(400).json({
-            success: false,
-            message: error instanceof Error
-                ? error.message
-                : "Internal server error"
-        })
+        next(error)
     }
 }
 
-const refreshTokenController = async (req: Request, res: Response) => {
+const refreshTokenController = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { token } = req.body;
         if (!token) {
-            return res.status(400).json({
-                success: false,
-                message: "Token not found"
-            })
+            throw new BadRequestError("Token not found")
         }
 
         const tokens = await refreshAccessToken({ token });
@@ -204,23 +132,15 @@ const refreshTokenController = async (req: Request, res: Response) => {
         })
 
     } catch (error) {
-        return res.status(400).json({
-            success: false,
-            message: error instanceof Error
-                ? error.message
-                : "Internal server error"
-        })
+        next(error)
     }
 }
 
-const logoutController = async (req: Request, res: Response) => {
+const logoutController = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { token } = req.body;
         if (!token) {
-            return res.status(400).json({
-                success: false,
-                message: "Token not found"
-            })
+            throw new BadRequestError("Token not found")
         }
         await logout({ token });
         return res.status(200).json({
@@ -228,12 +148,7 @@ const logoutController = async (req: Request, res: Response) => {
             message: "User logged out successfully"
         })
     } catch (error) {
-        return res.status(400).json({
-            success: false,
-            message: error instanceof Error
-                ? error.message
-                : "Internal server error"
-        })
+        next(error)
     }
 }
 

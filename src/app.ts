@@ -1,7 +1,6 @@
 import express from "express";
 import authRoutes from "./routes/auth.routes";
 import profileRoutes from "./routes/profile.routes";
-
 import authenticate from "./middlewares/auth.middleware";
 import errorMiddleware from "./middlewares/error.middleware";
 
