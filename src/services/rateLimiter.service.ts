@@ -3,6 +3,7 @@ import {
   LOGIN_LOCK_TIME,
   MAX_LOGIN_ATTEMPTS,
 } from "../constants/auth.constants";
+import { TooManyRequestsError } from "../errors/TooManyRequestsError";
 import { redisKeys } from "../utils/redisKeys";
 
 interface RateLimitInput {
@@ -15,7 +16,7 @@ export const checkLoginAttempts = async ({ email, ip }: RateLimitInput): Promise
   const count = Number(attempts ?? 0);
 
   if (count >= MAX_LOGIN_ATTEMPTS) {
-    throw new Error("Too many login attempts. Try again after 15 minutes.");
+    throw new TooManyRequestsError("Too many login attempts. Try again after 15 minutes.");
   }
 };
 

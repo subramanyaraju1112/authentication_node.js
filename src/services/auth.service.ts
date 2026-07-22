@@ -10,6 +10,11 @@ import RefreshToken from "../models/refreshToken.model";
 import redisClient from "../config/redis";
 import { redisKeys } from "../utils/redisKeys";
 import { checkLoginAttempts, incrementAttempts, resetAttempts } from "./rateLimiter.service";
+import { ConflictError } from "../errors/ConflictError";
+import { UnauthorizedError } from "../errors/unauthorizedError";
+import { NotFoundError } from "../errors/NotFoundError";
+import { BadRequestError } from "../errors/BadRequestError";
+import { ForbiddenError } from "../errors/ForbiddenError";
 
 interface AuthPayload extends JwtPayload {
     userId: string;
@@ -48,7 +53,7 @@ const signupUser = async ({ username, email, password }: SignupUserInput) => {
     const existingUser = await User.findOne({ email });
 
     if (existingUser) {
-        throw new Error("User Already Exists")
+        throw new ConflictError("User already exists")
     }
 
     const otp = generateOtp();
@@ -82,12 +87,12 @@ const signinUser = async ({ email, ip, password }: SigninUserInput) => {
 
     if (!user) {
         await incrementAttempts({ email, ip });
-        throw new Error("Invalid credentials")
+        throw new UnauthorizedError("Invalid credentials")
     }
 
     if (!user.isVerified) {
         await incrementAttempts({ email, ip });
-        throw new Error("Please verify your email first")
+        throw new ForbiddenError("Please verify your email first")
     }
 
     const isPasswordValid = await comparePassword(password, user.password);
@@ -95,7 +100,7 @@ const signinUser = async ({ email, ip, password }: SigninUserInput) => {
     if (!isPasswordValid) {
         await incrementAttempts({ email, ip });
 
-        throw new Error("Invalid credentials")
+        throw new UnauthorizedError("Invalid credentials")
     }
 
     await resetAttempts({ email, ip });
@@ -127,21 +132,21 @@ const verifyOtp = async ({ email, otp }: verifyUserInput) => {
     const user = await User.findOne({ email });
 
     if (!user) {
-        throw new Error("User not found")
+        throw new NotFoundError("User not found")
     }
 
     if (user.isVerified) {
-        throw new Error("User already verified")
+        throw new ConflictError("User already verified")
     }
 
     const storedOtp = await redisClient.get(redisKeys.otp(email));
 
     if (!storedOtp) {
-        throw new Error("OTP Expired");
+        throw new BadRequestError("OTP Expired");
     }
 
     if (storedOtp !== otp) {
-        throw new Error(" Incorrect OTP")
+        throw new BadRequestError(" Incorrect OTP");
     }
 
     await redisClient.del(redisKeys.otp(email));
@@ -162,11 +167,11 @@ const resendOtp = async ({ email }: verifyUserInput) => {
     const user = await User.findOne({ email });
 
     if (!user) {
-        throw new Error("User not found")
+        throw new NotFoundError("User not found")
     }
 
     if (user.isVerified) {
-        throw new Error("User already verified")
+        throw new ConflictError("User already verified")
     }
 
     const newOtp = generateOtp();
@@ -182,11 +187,11 @@ const forgotPassword = async ({ email }: forgotPasswordInput) => {
     const user = await User.findOne({ email });
 
     if (!user) {
-        throw new Error("User not found")
+        throw new NotFoundError("User not found")
     }
 
     if (!user.isVerified) {
-        throw new Error("Please verify your email first");
+        throw new ForbiddenError("Please verify your email first");
     }
 
     const otp = generateOtp();
@@ -202,21 +207,21 @@ const resetPassword = async ({ email, otp, password, confirmPassword }: resetPas
 
     const user = await User.findOne({ email });
     if (!user) {
-        throw new Error("User not found")
+        throw new NotFoundError("User not found")
     }
 
     const storedOtp = await redisClient.get(redisKeys.passwordResetOtp(email));
 
     if (!storedOtp) {
-        throw new Error("OTP expired");
+        throw new BadRequestError("OTP expired");
     }
 
     if (storedOtp !== otp) {
-        throw new Error("Incorrect OTP")
+        throw new BadRequestError("Incorrect OTP");
     }
 
     if (password !== confirmPassword) {
-        throw new Error("Password doesn't match")
+        throw new BadRequestError("Password doesn't match");
     }
 
     const hashedPassword = await hashPassword(password);
@@ -247,15 +252,15 @@ const refreshAccessToken = async ({ token }: refreshTokenInput) => {
     const findToken = await RefreshToken.findOne({ token });
 
     if (!findToken) {
-        throw new Error("Refresh Token not found")
+        throw new UnauthorizedError("Invalid refresh token")
     }
 
     if (findToken.revoked) {
-        throw new Error("Refresh Token is revoked")
+        throw new UnauthorizedError("Refresh Token is revoked")
     }
 
     if (Date.now() > findToken.expiresAt.getTime()) {
-        throw new Error("Refresh Token Expired")
+        throw new UnauthorizedError("Refresh Token Expired")
     }
 
     const newAccessToken = generateAccessToken(userId);
@@ -276,7 +281,7 @@ const logout = async ({ token }: refreshTokenInput) => {
     const findToken = await RefreshToken.findOne({ token });
 
     if (!findToken) {
-        throw new Error("Refresh Token not found")
+        throw new NotFoundError("Refresh Token not found")
     }
 
     await findToken.deleteOne();
