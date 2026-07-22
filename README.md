@@ -23,6 +23,7 @@ A production-ready Authentication API built using **Node.js**, **Express.js**, *
 - [Signin Flow](#signin-flow)
 - [Refresh Token Flow](#refresh-token-flow)
 - [Logout Flow](#logout-flow)
+- [Request Validation](#request-validation)
 - [Database Collections](#database-collections)
 - [Error Handling](#error-handling)
 - [JWT Strategy](#jwt-strategy)
@@ -46,6 +47,7 @@ A production-ready Authentication API built using **Node.js**, **Express.js**, *
 - User Signin
 - Email OTP Verification
 - Resend OTP
+- Request Validation using Zod
 - JWT Authentication
 - Access Token & Refresh Token Strategy
 - Refresh Token Rotation
@@ -62,24 +64,30 @@ A production-ready Authentication API built using **Node.js**, **Express.js**, *
 ## Tech Stack
 
 ### Backend
+
 - Node.js
 - Express.js
 - TypeScript
+- Zod (Schema Validation)
 
 ### Database
+
 - MongoDB
 - Mongoose
 - Redis
 
 ### Authentication
+
 - JWT (Access Token)
 - JWT (Refresh Token)
 - bcryptjs
 
 ### Email
+
 - Nodemailer
 
 ### DevOps
+
 - Docker
 - Docker Compose
 - NGINX
@@ -106,7 +114,8 @@ src
 │   ├── NotFoundError.ts
 │   ├── TooManyRequestsError.ts
 │   └── UnauthorizedError.ts
-├── middleware
+├── middlewares
+│   └── validate.middlewares.ts
 ├── models
 ├── routes
 ├── services
@@ -118,6 +127,8 @@ src
 │   ├── generateOtp.ts
 │   ├── hashPassword.ts
 │   └── sendEmail.ts
+├── validations
+│   └── auth.validations.ts
 ├── app.ts
 └── server.ts
 ```
@@ -335,6 +346,47 @@ Logout Successful
 
 ---
 
+## Request Validation
+
+Incoming request payloads are validated using **Zod** before reaching the controllers.
+
+- Schemas are defined in `src/validations/auth.validations.ts`
+- Validation is applied via a reusable middleware at `src/middlewares/validate.middlewares.ts`
+- Invalid requests are rejected with a `BadRequestError` (see [Error Handling](#error-handling)) before any database or business logic runs
+
+### Usage
+
+```ts
+import { Router } from "express";
+import { validate } from "../middlewares/validate.middlewares";
+import { signupSchema } from "../validations/auth.validations";
+import { signup } from "../controllers/auth.controller";
+
+const router = Router();
+
+router.post("/signup", validate(signupSchema), signup);
+
+export default router;
+```
+
+### Example Schema
+
+```ts
+import { z } from "zod";
+
+export const signupSchema = z.object({
+  body: z.object({
+    username: z.string().min(3),
+    email: z.string().email(),
+    password: z.string().min(8),
+  }),
+});
+```
+
+If validation fails, the middleware throws a `BadRequestError` containing the Zod issue messages, which is then formatted by the global error handler into a consistent JSON error response.
+
+---
+
 ## Database Collections
 
 ### users
@@ -373,15 +425,15 @@ The API uses a centralized error-handling system located in `src/errors`, combin
 
 All custom errors extend a common base class, `ApiError`, which carries an HTTP status code and message.
 
-| Error Class            | Status Code | Typical Use Case                          |
-| ----------------------- | ------------ | ------------------------------------------ |
-| `ApiError`             | —            | Base class for all custom errors           |
-| `BadRequestError`      | 400          | Invalid request payload or parameters      |
-| `UnauthorizedError`    | 401          | Missing or invalid authentication          |
-| `ForbiddenError`       | 403          | Authenticated but not permitted            |
-| `NotFoundError`        | 404          | Requested resource does not exist          |
-| `ConflictError`        | 409          | Duplicate resource (e.g. email already used) |
-| `TooManyRequestsError` | 429          | Rate limit exceeded (e.g. signin attempts) |
+| Error Class            | Status Code | Typical Use Case                             |
+| ---------------------- | ----------- | -------------------------------------------- |
+| `ApiError`             | —           | Base class for all custom errors             |
+| `BadRequestError`      | 400         | Invalid request payload or parameters        |
+| `UnauthorizedError`    | 401         | Missing or invalid authentication            |
+| `ForbiddenError`       | 403         | Authenticated but not permitted              |
+| `NotFoundError`        | 404         | Requested resource does not exist            |
+| `ConflictError`        | 409         | Duplicate resource (e.g. email already used) |
+| `TooManyRequestsError` | 429         | Rate limit exceeded (e.g. signin attempts)   |
 
 ### Usage
 
@@ -415,12 +467,14 @@ Errors thrown this way are caught automatically by `asyncHandler` and passed to 
 ## JWT Strategy
 
 ### Access Token
+
 - Short-lived Token
 - Sent with every protected request
 - Stored on client-side
 - Used for Authentication
 
 ### Refresh Token
+
 - Long-lived Token
 - Stored in MongoDB
 - Rotated after every refresh
@@ -680,13 +734,13 @@ DEL <key>
 ### Linux / EC2
 
 ```bash
-pwd                                          # Current directory
-ls                                           # List files
-ssh -i ~/.ssh/<key-name>.pem ubuntu@<EC2_PUBLIC_IP>  # SSH into EC2
-sudo systemctl status nginx                  # NGINX status
-sudo systemctl restart nginx                 # Restart NGINX
-sudo systemctl reload nginx                  # Reload NGINX
-sudo nginx -t                                # Test NGINX config
+pwd                                                    # Current directory
+ls                                                     # List files
+ssh -i ~/.ssh/<key-name>.pem ubuntu@<EC2_PUBLIC_IP>    # SSH into EC2
+sudo systemctl status nginx                            # NGINX status
+sudo systemctl restart nginx                           # Restart NGINX
+sudo systemctl reload nginx                            # Reload NGINX
+sudo nginx -t                                          # Test NGINX config
 ```
 
 ---
@@ -696,7 +750,7 @@ sudo nginx -t                                # Test NGINX config
 ### Public Routes
 
 | Method | Endpoint               |
-| ------ | ----------------------- |
+| ------ | ---------------------- |
 | POST   | `/api/auth/signup`     |
 | POST   | `/api/auth/signin`     |
 | POST   | `/api/auth/verify-otp` |
@@ -705,7 +759,7 @@ sudo nginx -t                                # Test NGINX config
 ### Protected Routes
 
 | Method | Endpoint           |
-| ------ | ------------------- |
+| ------ | ------------------ |
 | POST   | `/api/auth/logout` |
 | GET    | `/api/profile`     |
 
@@ -737,4 +791,4 @@ This project is licensed under the [MIT License](LICENSE).
 
 MERN Stack Developer
 
-Built with **Node.js**, **TypeScript**, **Docker**, **NGINX**, **MongoDB**, and **AWS EC2**.
+Built with **TypeScript**, **Node.js**, **Redis**, **MongoDB**, **Docker**, **NGINX** and **AWS EC2**.
