@@ -1,13 +1,8 @@
 import { forgotPassword, logout, refreshAccessToken, resendOtp, resetPassword, signinUser, signupUser, verifyOtp } from "../services/auth.service";
-import { BadRequestError } from "../errors/BadRequestError";
 import asyncHandler from "../utils/asyncHandler";
 
 const signupController = asyncHandler(async (req, res) => {
     const { username, email, password } = req.body;
-    if (!username || !email || !password) {
-        throw new BadRequestError("All fields are required")
-    }
-
     const user = await signupUser({ username, email, password });
     res.status(201).json({
         success: true,
@@ -18,9 +13,6 @@ const signupController = asyncHandler(async (req, res) => {
 
 const signinController = asyncHandler(async (req, res) => {
     const { email, password } = req.body;
-    if (!email || !password) {
-        throw new BadRequestError("All fields are required");
-    }
     const ip = req.ip || req.socket.remoteAddress || "unknown";
     const user = await signinUser({ ip, email, password });
     res.status(200).json({
@@ -32,10 +24,6 @@ const signinController = asyncHandler(async (req, res) => {
 
 const verifyOtpController = asyncHandler(async (req, res) => {
     const { email, otp } = req.body
-    if (!email || !otp) {
-        throw new BadRequestError("Email & OTP are required");
-    }
-
     const user = await verifyOtp({ email, otp });
     res.status(200).json({
         success: true,
@@ -51,10 +39,6 @@ const verifyOtpController = asyncHandler(async (req, res) => {
 
 const resendOtpController = asyncHandler(async (req, res) => {
     const { email } = req.body;
-    if (!email) {
-        throw new BadRequestError("Email is required")
-    }
-
     await resendOtp({ email });
     res.status(200).json({
         success: true,
@@ -64,10 +48,6 @@ const resendOtpController = asyncHandler(async (req, res) => {
 
 const forgotPasswordController = asyncHandler(async (req, res) => {
     const { email } = req.body;
-    if (!email) {
-        throw new BadRequestError("Email is required")
-    }
-
     await forgotPassword({ email });
     res.status(200).json({
         success: true,
@@ -77,10 +57,6 @@ const forgotPasswordController = asyncHandler(async (req, res) => {
 
 const resetPasswordController = asyncHandler(async (req, res) => {
     const { email, otp, password, confirmPassword } = req.body;
-
-    if (!email || !otp || !password || !confirmPassword) {
-        throw new BadRequestError("All fields are required")
-    }
     await resetPassword({ email, otp, password, confirmPassword });
     res.status(200).json({
         success: true,
@@ -90,23 +66,16 @@ const resetPasswordController = asyncHandler(async (req, res) => {
 
 const refreshTokenController = asyncHandler(async (req, res) => {
     const { token } = req.body;
-    if (!token) {
-        throw new BadRequestError("Refresh token is required")
-    }
-
     const tokens = await refreshAccessToken({ token });
     res.status(200).json({
         success: true,
-        message: "Refresh token generated sucessfully",
+        message: "Refresh token generated successfully",
         data: tokens
     })
 });
 
 const logoutController = asyncHandler(async (req, res) => {
     const { token } = req.body;
-    if (!token) {
-        throw new BadRequestError("Refresh token is required")
-    }
     await logout({ token });
     res.status(200).json({
         success: true,
