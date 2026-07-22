@@ -11,10 +11,10 @@ import redisClient from "../config/redis";
 import { redisKeys } from "../utils/redisKeys";
 import { checkLoginAttempts, incrementAttempts, resetAttempts } from "./rateLimiter.service";
 import { ConflictError } from "../errors/ConflictError";
-import { UnauthorizedError } from "../errors/unauthorizedError";
 import { NotFoundError } from "../errors/NotFoundError";
 import { BadRequestError } from "../errors/BadRequestError";
 import { ForbiddenError } from "../errors/ForbiddenError";
+import { UnauthorizedError } from "../errors/UnauthorizedError";
 
 interface AuthPayload extends JwtPayload {
     userId: string;
