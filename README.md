@@ -24,6 +24,7 @@ A production-ready Authentication API built using **Node.js**, **Express.js**, *
 - [Refresh Token Flow](#refresh-token-flow)
 - [Logout Flow](#logout-flow)
 - [Database Collections](#database-collections)
+- [Error Handling](#error-handling)
 - [JWT Strategy](#jwt-strategy)
 - [Dockerization](#dockerization)
 - [AWS EC2 Deployment](#aws-ec2-deployment)
@@ -97,6 +98,14 @@ src
 │   └── redis.ts
 ├── constants
 ├── controllers
+├── errors
+│   ├── ApiError.ts
+│   ├── BadRequestError.ts
+│   ├── ConflictError.ts
+│   ├── ForbiddenError.ts
+│   ├── NotFoundError.ts
+│   ├── TooManyRequestsError.ts
+│   └── UnauthorizedError.ts
 ├── middleware
 ├── models
 ├── routes
@@ -104,6 +113,7 @@ src
 │   ├── auth.service.ts
 │   └── rateLimiter.service.ts
 ├── utils
+│   ├── asyncHandler.ts
 │   ├── redisKeys.ts
 │   ├── generateOtp.ts
 │   ├── hashPassword.ts
@@ -351,6 +361,53 @@ expiresAt
 revoked
 createdAt
 updatedAt
+```
+
+---
+
+## Error Handling
+
+The API uses a centralized error-handling system located in `src/errors`, combined with an `asyncHandler` utility (`src/utils/asyncHandler.ts`) that wraps controllers and forwards any thrown or rejected errors to Express's global error middleware — removing the need for repetitive `try/catch` blocks in controllers.
+
+### Error Classes
+
+All custom errors extend a common base class, `ApiError`, which carries an HTTP status code and message.
+
+| Error Class            | Status Code | Typical Use Case                          |
+| ----------------------- | ------------ | ------------------------------------------ |
+| `ApiError`             | —            | Base class for all custom errors           |
+| `BadRequestError`      | 400          | Invalid request payload or parameters      |
+| `UnauthorizedError`    | 401          | Missing or invalid authentication          |
+| `ForbiddenError`       | 403          | Authenticated but not permitted            |
+| `NotFoundError`        | 404          | Requested resource does not exist          |
+| `ConflictError`        | 409          | Duplicate resource (e.g. email already used) |
+| `TooManyRequestsError` | 429          | Rate limit exceeded (e.g. signin attempts) |
+
+### Usage
+
+```ts
+import { asyncHandler } from "../utils/asyncHandler";
+import { NotFoundError } from "../errors/NotFoundError";
+
+export const getProfile = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.userId);
+
+  if (!user) {
+    throw new NotFoundError("User not found");
+  }
+
+  res.json(user);
+});
+```
+
+Errors thrown this way are caught automatically by `asyncHandler` and passed to a global error-handling middleware, which formats a consistent JSON error response such as:
+
+```json
+{
+  "success": false,
+  "statusCode": 404,
+  "message": "User not found"
+}
 ```
 
 ---
@@ -623,13 +680,13 @@ DEL <key>
 ### Linux / EC2
 
 ```bash
-pwd                                                                # Current directory
-ls                                                                 # List files
-ssh -i ~/.ssh/<key-name>.pem ubuntu@<EC2_PUBLIC_IP>                # SSH into EC2
-sudo systemctl status nginx                                        # NGINX status
-sudo systemctl restart nginx                                       # Restart NGINX
-sudo systemctl reload nginx                                        # Reload NGINX
-sudo nginx -t                                                      # Test NGINX config
+pwd                                          # Current directory
+ls                                           # List files
+ssh -i ~/.ssh/<key-name>.pem ubuntu@<EC2_PUBLIC_IP>  # SSH into EC2
+sudo systemctl status nginx                  # NGINX status
+sudo systemctl restart nginx                 # Restart NGINX
+sudo systemctl reload nginx                  # Reload NGINX
+sudo nginx -t                                # Test NGINX config
 ```
 
 ---
@@ -680,4 +737,4 @@ This project is licensed under the [MIT License](LICENSE).
 
 MERN Stack Developer
 
-Built with **TypeScript**, **Node.js**, **Redis**, **MongoDB**, **Docker**, **NGINX** and **AWS EC2**.
+Built with **Node.js**, **TypeScript**, **Docker**, **NGINX**, **MongoDB**, and **AWS EC2**.
