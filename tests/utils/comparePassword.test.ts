@@ -1,7 +1,7 @@
 import comparePassword from "../../src/utils/comparePassword";
 import hashPassword from "../../src/utils/hashPassword";
 
-describe("compare password", () => {
+describe("comparePassword", () => {
     test("should return true for a valid password", async () => {
         const password = "Password@123";
         const hashedPassword = await hashPassword(password);
